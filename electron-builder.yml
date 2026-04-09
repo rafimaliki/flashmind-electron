@@ -1,0 +1,32 @@
+appId: com.flashmind.app
+productName: FlashMind
+copyright: Copyright © 2026
+
+directories:
+  buildResources: assets
+  output: release
+
+files:
+  - dist/**/*
+  - src/main/**/*
+  - package.json
+
+mac:
+  target:
+    - dmg
+
+win:
+  target:
+    - nsis
+
+linux:
+  target:
+    - AppImage
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Custom Properties ───────────────────────────────────── */
+:root {
+  --bg-base:      #0a0a0d;
+  --bg-surface:   #111115;
+  --bg-elevated:  #18181e;
+  --bg-overlay:   #1e1e26;
+  --border:       #232330;
+  --border-soft:  #1c1c28;
+
+  --text-primary:   #e2e2f0;
+  --text-secondary: #8888a8;
+  --text-muted:     #4a4a60;
+
+  --accent:         #f59e0b;
+  --accent-dim:     rgba(245, 158, 11, 0.12);
+  --accent-glow:    rgba(245, 158, 11, 0.06);
+}
+
+/* ── Base Reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333348;
+}
+
+/* ── Dot-grid texture on main content ───────────────────────── */
+.dot-grid {
+  background-image: radial-gradient(circle, #2a2a3a 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Subtle glow for accent elements ────────────────────────── */
+.accent-glow {
+  box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow);
+}
+
+/* ── Stat card number ────────────────────────────────────────── */
+.stat-number {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Fade/slide animations ───────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-item {
+  animation: fadeSlideUp 0.4s ease both;
+}
+.anim-item:nth-child(1) { animation-delay: 0.05s; }
+.anim-item:nth-child(2) { animation-delay: 0.10s; }
+.anim-item:nth-child(3) { animation-delay: 0.15s; }
+.anim-item:nth-child(4) { animation-delay: 0.20s; }
+.anim-item:nth-child(5) { animation-delay: 0.25s; }
+.anim-item:nth-child(6) { animation-delay: 0.30s; }
