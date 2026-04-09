@@ -15,9 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   cards: {
-    getSession:       (profileId)                    => ipcRenderer.invoke('cards:get-session', profileId),
-    rate:             (profileId, cardPath, rating)  => ipcRenderer.invoke('cards:rate', { profileId, cardPath, rating }),
-    previewIntervals: (profileId, cardPath)          => ipcRenderer.invoke('cards:preview-intervals', { profileId, cardPath }),
+    getSession: (profileId)                   => ipcRenderer.invoke('cards:get-session', profileId),
+    rate:       (profileId, cardPath, rating) => ipcRenderer.invoke('cards:rate', { profileId, cardPath, rating }),
   },
 
   dialog: {

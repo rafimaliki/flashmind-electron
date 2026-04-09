@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  X, ChevronLeft, CheckCircle, BookOpen,
-  Loader2, Frown, RotateCcw,
+  ChevronLeft, CheckCircle, BookOpen,
+  Loader2, RotateCcw, TrendingUp, Minus, TrendingDown,
 } from 'lucide-react'
 import MarkdownCard from './MarkdownCard'
 
 const api = window.electronAPI
 
-// ── Helpers ───────────────────────────────────────────────────
-
-function pluralDays(n) {
-  return n === 1 ? '1 day' : `${n} days`
-}
-
-// ── Rating button ─────────────────────────────────────────────
+// ── Rating config ─────────────────────────────────────────────
+//
+// Weight-based system: rating changes a card's selection weight.
+// No date restrictions — you can study again immediately.
+//   Hard   → weight +2  (surfaces more often)
+//   Medium → weight ±0  (frequency unchanged)
+//   Easy   → weight -2  (surfaces less often)
 
 const RATING_CONFIG = {
   hard: {
     label: 'Hard',
     shortcut: '1',
+    sublabel: 'More often',
+    Icon: TrendingUp,
     color: '#f87171',
     bg: 'rgba(248,113,113,0.1)',
     border: 'rgba(248,113,113,0.25)',
@@ -28,6 +30,8 @@ const RATING_CONFIG = {
   medium: {
     label: 'Medium',
     shortcut: '2',
+    sublabel: 'Same',
+    Icon: Minus,
     color: '#f59e0b',
     bg: 'rgba(245,158,11,0.1)',
     border: 'rgba(245,158,11,0.25)',
@@ -37,6 +41,8 @@ const RATING_CONFIG = {
   easy: {
     label: 'Easy',
     shortcut: '3',
+    sublabel: 'Less often',
+    Icon: TrendingDown,
     color: '#4ade80',
     bg: 'rgba(74,222,128,0.1)',
     border: 'rgba(74,222,128,0.2)',
@@ -45,19 +51,25 @@ const RATING_CONFIG = {
   },
 }
 
-function RatingButton({ rating, interval, onRate, disabled }) {
+// ── Rating button ─────────────────────────────────────────────
+
+function RatingButton({ rating, onRate, disabled }) {
   const cfg = RATING_CONFIG[rating]
-  const style = {
+  const { Icon } = cfg
+  const baseStyle = {
     color: cfg.color,
     background: cfg.bg,
     border: `1px solid ${cfg.border}`,
+    opacity: disabled ? 0.5 : 1,
+    cursor: disabled ? 'not-allowed' : 'pointer',
   }
+
   return (
     <button
       onClick={() => !disabled && onRate(rating)}
       disabled={disabled}
-      className="flex-1 flex flex-col items-center gap-1 py-3 px-4 rounded-xl transition-all duration-100"
-      style={style}
+      className="flex-1 flex flex-col items-center gap-1.5 py-3 px-3 rounded-xl transition-all duration-100"
+      style={baseStyle}
       onMouseEnter={e => {
         if (!disabled) {
           e.currentTarget.style.background = cfg.hoverBg
@@ -69,11 +81,10 @@ function RatingButton({ rating, interval, onRate, disabled }) {
         e.currentTarget.style.borderColor = cfg.border
       }}
     >
-      <span className="text-sm font-semibold">{cfg.label}</span>
-      <span className="text-[10px] font-mono opacity-70">
-        {interval != null ? `+${pluralDays(interval)}` : '…'}
-      </span>
-      <span className="text-[9px] opacity-40 font-mono">[{cfg.shortcut}]</span>
+      <Icon size={16} />
+      <span className="text-sm font-semibold leading-none">{cfg.label}</span>
+      <span className="text-[10px] opacity-60 leading-none">{cfg.sublabel}</span>
+      <span className="text-[9px] opacity-30 font-mono">[{cfg.shortcut}]</span>
     </button>
   )
 }
@@ -81,27 +92,20 @@ function RatingButton({ rating, interval, onRate, disabled }) {
 // ── Card review screen ────────────────────────────────────────
 
 function ReviewScreen({ card, current, total, onRate, onExit }) {
-  const [intervals, setIntervals] = useState(null)
-  const [rating, setRating] = useState(null) // currently being submitted
-
+  const [submitting, setSubmitting] = useState(false)
   const progress = (current - 1) / total
 
-  useEffect(() => {
-    setIntervals(null)
-    setRating(null)
-    api.cards.previewIntervals(card.profileId ?? '', card.path).then(setIntervals)
-  }, [card.path])
-
   const handleRate = useCallback(async (r) => {
-    if (rating) return
-    setRating(r)
+    if (submitting) return
+    setSubmitting(true)
     await onRate(r)
-    setRating(null)
-  }, [rating, onRate])
+    setSubmitting(false)
+  }, [submitting, onRate])
 
-  // Keyboard shortcuts: 1=hard, 2=medium, 3=easy
+  // Keyboard shortcuts: 1=Hard 2=Medium 3=Easy
   useEffect(() => {
     const handler = (e) => {
+      if (e.target.tagName === 'INPUT') return
       if (e.key === '1') handleRate('hard')
       else if (e.key === '2') handleRate('medium')
       else if (e.key === '3') handleRate('easy')
@@ -132,7 +136,9 @@ function ReviewScreen({ card, current, total, onRate, onExit }) {
         </button>
 
         <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-          {current} <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>/</span> {total}
+          {current}
+          <span style={{ opacity: 0.4 }}> / </span>
+          {total}
         </span>
       </div>
 
@@ -144,10 +150,9 @@ function ReviewScreen({ card, current, total, onRate, onExit }) {
         />
       </div>
 
-      {/* ── Card content ── */}
+      {/* ── Card content (scrollable) ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-8">
-          {/* File breadcrumb */}
           <p className="text-[11px] font-mono mb-5" style={{ color: 'var(--text-muted)' }}>
             {breadcrumb}
           </p>
@@ -160,18 +165,12 @@ function ReviewScreen({ card, current, total, onRate, onExit }) {
         className="flex-shrink-0 px-6 py-4"
         style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-surface)' }}
       >
-        <p className="text-xs text-center mb-3 font-medium" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-xs text-center mb-3" style={{ color: 'var(--text-muted)' }}>
           How well did you know this?
         </p>
-        <div className="flex gap-3 max-w-md mx-auto">
+        <div className="flex gap-3 max-w-sm mx-auto">
           {['hard', 'medium', 'easy'].map(r => (
-            <RatingButton
-              key={r}
-              rating={r}
-              interval={intervals?.[r]}
-              onRate={handleRate}
-              disabled={!!rating}
-            />
+            <RatingButton key={r} rating={r} onRate={handleRate} disabled={submitting} />
           ))}
         </div>
       </div>
@@ -201,21 +200,18 @@ function CompletionScreen({ ratings, total, profileName, onEnd, onRestart }) {
           {profileName}
         </p>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        {/* Breakdown */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {[
-            { key: 'easy',   label: 'Easy',   color: '#4ade80', bg: 'rgba(74,222,128,0.08)'  },
-            { key: 'medium', label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)'  },
-            { key: 'hard',   label: 'Hard',   color: '#f87171', bg: 'rgba(248,113,113,0.08)' },
-          ].map(({ key, label, color, bg }) => (
-            <div key={key} className="rounded-xl py-3"
+            { key: 'hard',   label: 'Hard',   Icon: TrendingUp,   color: '#f87171', bg: 'rgba(248,113,113,0.08)' },
+            { key: 'medium', label: 'Medium', Icon: Minus,        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)'  },
+            { key: 'easy',   label: 'Easy',   Icon: TrendingDown, color: '#4ade80', bg: 'rgba(74,222,128,0.08)'  },
+          ].map(({ key, label, Icon, color, bg }) => (
+            <div key={key} className="rounded-xl py-3 px-2"
                  style={{ background: bg, border: `1px solid ${color}22` }}>
-              <p className="stat-number text-2xl font-medium" style={{ color }}>
-                {counts[key]}
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {label}
-              </p>
+              <Icon size={14} style={{ color, margin: '0 auto 4px' }} />
+              <p className="stat-number text-2xl font-medium" style={{ color }}>{counts[key]}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</p>
             </div>
           ))}
         </div>
@@ -243,7 +239,7 @@ function CompletionScreen({ ratings, total, profileName, onEnd, onRestart }) {
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-dim)' }}
           >
             <RotateCcw size={14} />
-            Review again
+            Study again
           </button>
         </div>
       </div>
@@ -251,7 +247,7 @@ function CompletionScreen({ ratings, total, profileName, onEnd, onRestart }) {
   )
 }
 
-// ── Empty state (nothing due) ─────────────────────────────────
+// ── Empty state ───────────────────────────────────────────────
 
 function EmptyState({ profileName, onEnd }) {
   return (
@@ -262,13 +258,13 @@ function EmptyState({ profileName, onEnd }) {
           <BookOpen size={24} style={{ color: 'var(--text-muted)' }} />
         </div>
         <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-          All caught up
+          No cards found
         </h2>
         <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
           {profileName}
         </p>
         <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
-          No cards due right now. Check back later — your schedule is on track.
+          Add folders with Markdown files to this profile to start reviewing.
         </p>
         <button
           onClick={onEnd}
@@ -297,10 +293,10 @@ function LoadingState() {
   )
 }
 
-// ── Main Session export ───────────────────────────────────────
+// ── Main export ───────────────────────────────────────────────
 
 export default function Session({ profile, onEnd }) {
-  const [phase, setPhase] = useState('loading') // loading | empty | reviewing | complete
+  const [phase, setPhase] = useState('loading')
   const [cards, setCards] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [ratings, setRatings] = useState([])
@@ -331,10 +327,8 @@ export default function Session({ profile, onEnd }) {
     }
   }
 
-  if (phase === 'loading') return <LoadingState />
-
-  if (phase === 'empty') return <EmptyState profileName={profile.name} onEnd={onEnd} />
-
+  if (phase === 'loading')  return <LoadingState />
+  if (phase === 'empty')    return <EmptyState profileName={profile.name} onEnd={onEnd} />
   if (phase === 'complete') {
     return (
       <CompletionScreen

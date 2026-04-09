@@ -3,87 +3,67 @@ const fs = require('fs')
 const { readData, writeData } = require('../store')
 const { scanProfile } = require('../scanner')
 
-// ── Spaced Repetition ─────────────────────────────────────────
+// ── Weight-based frequency system ────────────────────────────
 //
-// Simplified SM-2-inspired algorithm:
-//   Hard   → reset interval to 1 day, lower ease factor
-//   Medium → grow interval slowly (×1.3)
-//   Easy   → grow by ease factor, raise ease factor slightly
+// Each card carries a weight (1–10, default 5).
+// Session cards are drawn by weighted random sampling — no date
+// restrictions, so users can study again immediately.
 //
-// Intervals are capped at 90 days.
+//   Hard   → weight +2  (card surfaces more often)
+//   Medium → no change  (frequency stays the same)
+//   Easy   → weight -2  (card surfaces less often)
+
+const MIN_WEIGHT = 1
+const MAX_WEIGHT = 10
+const DEFAULT_WEIGHT = 5
 
 function applyRating(state, rating) {
-  let { interval = 0, easeFactor = 2.5, totalReviews = 0 } = state || {}
+  const weight = state?.weight ?? DEFAULT_WEIGHT
+  const totalReviews = (state?.totalReviews ?? 0) + 1
 
-  if (interval === 0) {
-    // First review of this card
-    if (rating === 'easy')   interval = 4
-    else if (rating === 'medium') interval = 2
-    else                     interval = 1
+  let newWeight
+  if (rating === 'hard') {
+    newWeight = Math.min(MAX_WEIGHT, weight + 2)
+  } else if (rating === 'medium') {
+    newWeight = weight
   } else {
-    if (rating === 'hard') {
-      interval = 1
-      easeFactor = Math.max(1.3, easeFactor - 0.2)
-    } else if (rating === 'medium') {
-      interval = Math.max(1, Math.round(interval * 1.3))
-    } else {
-      interval = Math.max(1, Math.round(interval * easeFactor))
-      easeFactor = Math.min(3.0, easeFactor + 0.1)
-    }
+    newWeight = Math.max(MIN_WEIGHT, weight - 2)
   }
 
-  interval = Math.min(interval, 90)
-
-  const nextReview = new Date()
-  nextReview.setDate(nextReview.getDate() + interval)
-  nextReview.setHours(0, 0, 0, 0)
-
   return {
-    interval,
-    easeFactor,
-    nextReview: nextReview.toISOString(),
-    totalReviews: totalReviews + 1,
+    weight: newWeight,
+    totalReviews,
     lastRating: rating,
     lastReview: new Date().toISOString(),
   }
 }
 
-// Preview next interval without mutating state
-function previewInterval(state, rating) {
-  const result = applyRating(state, rating)
-  return result.interval
-}
+// Weighted random sampling without replacement.
+// Higher weight → more likely to be picked each draw.
+function weightedSample(pool, n) {
+  const items = pool.slice()
+  const result = []
 
-// ── Session card selection ────────────────────────────────────
-
-function selectSessionCards(profile, cardStates) {
-  const allCards = scanProfile(profile)
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-
-  const overdue = []
-  const dueToday = []
-  const newCards = []
-
-  for (const card of allCards) {
-    const state = cardStates[card.path]
-    if (!state) {
-      newCards.push({ ...card, state: null })
-    } else {
-      const next = new Date(state.nextReview)
-      if (next <= now) {
-        // Overdue = next review was before today
-        const isOverdue = next < now
-        if (isOverdue) overdue.push({ ...card, state })
-        else dueToday.push({ ...card, state })
+  for (let i = 0; i < Math.min(n, items.length); i++) {
+    const total = items.reduce((s, c) => s + c.weight, 0)
+    let rand = Math.random() * total
+    for (let j = 0; j < items.length; j++) {
+      rand -= items[j].weight
+      if (rand <= 0) {
+        result.push(items[j])
+        items.splice(j, 1)
+        break
       }
     }
   }
 
-  // Prioritize: overdue (oldest first) → due today → new
-  overdue.sort((a, b) => new Date(a.state.nextReview) - new Date(b.state.nextReview))
+  // Shuffle result so high-weight cards don't always front-load the session
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]]
+  }
 
-  return [...overdue, ...dueToday, ...newCards].slice(0, profile.cardsPerSession)
+  return result
 }
 
 // ── IPC handlers ──────────────────────────────────────────────
@@ -94,10 +74,19 @@ function registerCardHandlers() {
     const profile = data.profiles.find(p => p.id === profileId)
     if (!profile) return { cards: [], totalInProfile: 0 }
 
+    const allCards = scanProfile(profile)
     const cardStates = data.cards[profileId] || {}
-    const selected = selectSessionCards(profile, cardStates)
 
-    // Read file content for each selected card
+    // Attach weights for sampling
+    const pool = allCards.map(card => ({
+      ...card,
+      state: cardStates[card.path] ?? null,
+      weight: cardStates[card.path]?.weight ?? DEFAULT_WEIGHT,
+    }))
+
+    const selected = weightedSample(pool, profile.cardsPerSession)
+
+    // Read file contents
     const cards = []
     for (const card of selected) {
       try {
@@ -108,35 +97,19 @@ function registerCardHandlers() {
       }
     }
 
-    const allCards = scanProfile(profile)
-    return {
-      cards,
-      totalInProfile: allCards.length,
-    }
+    return { cards, totalInProfile: allCards.length }
   })
 
   ipcMain.handle('cards:rate', (_, { profileId, cardPath, rating }) => {
     const data = readData()
     if (!data.cards[profileId]) data.cards[profileId] = {}
 
-    const existing = data.cards[profileId][cardPath] || null
+    const existing = data.cards[profileId][cardPath] ?? null
     const updated = applyRating(existing, rating)
     data.cards[profileId][cardPath] = updated
     writeData(data)
 
     return updated
-  })
-
-  // Returns intervals (days) for each rating option given the current card state.
-  // Used by the UI to preview impact before rating.
-  ipcMain.handle('cards:preview-intervals', (_, { profileId, cardPath }) => {
-    const data = readData()
-    const state = (data.cards[profileId] || {})[cardPath] || null
-    return {
-      hard:   previewInterval(state, 'hard'),
-      medium: previewInterval(state, 'medium'),
-      easy:   previewInterval(state, 'easy'),
-    }
   })
 }
 
