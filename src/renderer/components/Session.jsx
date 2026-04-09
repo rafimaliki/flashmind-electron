@@ -321,6 +321,8 @@ export default function Session({ profile, onEnd }) {
     setRatings(newRatings)
 
     if (currentIndex + 1 >= cards.length) {
+      // Record session before showing completion screen (fire-and-forget)
+      api.sessions.record(profile.id, newRatings.length).catch(() => {})
       setPhase('complete')
     } else {
       setCurrentIndex(i => i + 1)

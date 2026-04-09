@@ -6,8 +6,13 @@ const DATA_FILE = path.join(app.getPath('userData'), 'data.json')
 
 const DEFAULT_DATA = {
   profiles: [],
-  cards: {},     // card review state — populated in a later phase
-  sessions: {},  // session state — populated in a later phase
+  cards: {},     // { [profileId]: { [cardPath]: { weight, totalReviews, lastRating, lastReview } } }
+  sessions: {},  // { [YYYY-MM-DD]: { [profileId]: { cardsReviewed, completedAt } } }
+  streak: {
+    current: 0,
+    lastStudyDate: null, // YYYY-MM-DD
+    longest: 0,
+  },
 }
 
 function readData() {

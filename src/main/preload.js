@@ -19,6 +19,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     rate:       (profileId, cardPath, rating) => ipcRenderer.invoke('cards:rate', { profileId, cardPath, rating }),
   },
 
+  dashboard: {
+    getStats: () => ipcRenderer.invoke('dashboard:get-stats'),
+  },
+
+  sessions: {
+    record: (profileId, cardsReviewed) => ipcRenderer.invoke('sessions:record', { profileId, cardsReviewed }),
+  },
+
   dialog: {
     openFolder: () => ipcRenderer.invoke('dialog:open-folder'),
   },
