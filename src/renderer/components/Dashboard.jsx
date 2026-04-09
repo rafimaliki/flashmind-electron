@@ -172,7 +172,7 @@ function Step({ number, text, done }) {
 
 /* ── Dashboard ───────────────────────────────────────────────── */
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }) {
   return (
     <div className="min-h-full p-8 max-w-4xl mx-auto">
 
@@ -208,11 +208,13 @@ export default function Dashboard() {
               title="Start a Session"
               subtitle="Pick a profile and begin reviewing cards"
               accent
+              onClick={() => onNavigate?.('profiles')}
             />
             <ActionButton
               icon={FolderPlus}
               title="Create a Profile"
               subtitle="Point FlashMind to a folder of Markdown files"
+              onClick={() => onNavigate?.('profiles')}
             />
           </div>
         </div>

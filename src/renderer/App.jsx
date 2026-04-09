@@ -2,31 +2,49 @@ import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import Profiles from './components/Profiles'
+import Session from './components/Session'
 
-// Views that manage their own scroll/layout should not have dot-grid on the outer <main>
-const FULL_SCREEN_VIEWS = ['profiles']
+// Views that manage their own layout internally (no outer dot-grid or overflow-auto)
+const CUSTOM_LAYOUT_VIEWS = ['profiles', 'session']
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
-  const isFullScreen = FULL_SCREEN_VIEWS.includes(activeView)
+  const [sessionProfile, setSessionProfile] = useState(null)
+
+  function startSession(profile) {
+    setSessionProfile(profile)
+    setActiveView('session')
+  }
+
+  function endSession() {
+    setSessionProfile(null)
+    setActiveView('dashboard')
+  }
 
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard />
+        return <Dashboard onNavigate={setActiveView} />
       case 'profiles':
-        return <Profiles />
+        return <Profiles onStartSession={startSession} />
+      case 'session':
+        return <Session profile={sessionProfile} onEnd={endSession} />
       case 'settings':
         return <Placeholder title="Settings" description="Configure FlashMind to your preferences." />
       default:
-        return <Dashboard />
+        return <Dashboard onNavigate={setActiveView} />
     }
   }
 
+  const isCustomLayout = CUSTOM_LAYOUT_VIEWS.includes(activeView)
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
-      <main className={`flex-1 overflow-auto ${isFullScreen ? '' : 'dot-grid'}`}>
+      {/* Hide sidebar during session for a focused review experience */}
+      {activeView !== 'session' && (
+        <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      )}
+      <main className={`flex-1 ${isCustomLayout ? 'overflow-hidden' : 'overflow-auto dot-grid'}`}>
         {renderView()}
       </main>
     </div>

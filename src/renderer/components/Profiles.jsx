@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus, Folder, FolderOpen, Trash2, X,
-  FileText, Settings2, ChevronRight, FolderPlus,
-  AlertTriangle, Loader2,
+  FileText, FolderPlus, AlertTriangle, Loader2,
+  PlayCircle,
 } from 'lucide-react'
 
 const api = window.electronAPI
@@ -167,7 +167,7 @@ function FolderItem({ folderPath, onRemove }) {
 
 // ── Profile Detail (right panel) ─────────────────────────────
 
-function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFolder, onDelete, onUpdateCardsPerSession }) {
+function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFolder, onDelete, onUpdateCardsPerSession, onStartSession }) {
   const [localName, setLocalName] = useState(profile.name)
   const [localCPS, setLocalCPS] = useState(profile.cardsPerSession)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -192,19 +192,38 @@ function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFold
           {profile.name}
         </h2>
 
-        {/* Card count badge */}
-        <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
-             style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-          <FileText size={13} style={{ color: 'var(--text-muted)' }} />
-          {scanning ? (
-            <span className="text-xs font-mono flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-              <Loader2 size={11} className="animate-spin" /> scanning…
-            </span>
-          ) : (
-            <span className="text-xs font-mono" style={{ color: cardCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
-              {cardCount ?? '—'} {cardCount === 1 ? 'card' : 'cards'} found
-            </span>
-          )}
+        {/* Card count + Start Session row */}
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
+               style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+            <FileText size={13} style={{ color: 'var(--text-muted)' }} />
+            {scanning ? (
+              <span className="text-xs font-mono flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                <Loader2 size={11} className="animate-spin" /> scanning…
+              </span>
+            ) : (
+              <span className="text-xs font-mono" style={{ color: cardCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
+                {cardCount ?? '—'} {cardCount === 1 ? 'card' : 'cards'} found
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={onStartSession}
+            disabled={!cardCount}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{
+              background: cardCount ? 'var(--accent-dim)' : 'var(--bg-elevated)',
+              color: cardCount ? 'var(--accent)' : 'var(--text-muted)',
+              border: cardCount ? '1px solid rgba(245,158,11,0.25)' : '1px solid var(--border)',
+              cursor: cardCount ? 'pointer' : 'not-allowed',
+            }}
+            onMouseEnter={e => { if (cardCount) e.currentTarget.style.background = 'rgba(245,158,11,0.18)' }}
+            onMouseLeave={e => { if (cardCount) e.currentTarget.style.background = 'var(--accent-dim)' }}
+          >
+            <PlayCircle size={13} />
+            Start Session
+          </button>
         </div>
       </div>
 
@@ -522,7 +541,7 @@ function CreateModal({ onCreate, onClose }) {
 
 // ── Main export ───────────────────────────────────────────────
 
-export default function Profiles() {
+export default function Profiles({ onStartSession }) {
   const [profiles, setProfiles] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -621,6 +640,7 @@ export default function Profiles() {
             onRemoveFolder={handleRemoveFolder}
             onDelete={handleDelete}
             onUpdateCardsPerSession={handleUpdateCardsPerSession}
+            onStartSession={() => onStartSession?.(selectedProfile)}
           />
         ) : (
           <EmptyDetail

@@ -7,6 +7,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // react-syntax-highlighter bundles all Prism languages (~900 kB).
+    // Acceptable for an Electron desktop app (loaded from disk, not network).
+    chunkSizeWarningLimit: 1200,
   },
   server: {
     port: 5173,

@@ -1,55 +1,7 @@
 const { ipcMain, dialog, BrowserWindow } = require('electron')
 const { randomUUID } = require('crypto')
-const fs = require('fs')
-const path = require('path')
 const { readData, writeData } = require('../store')
-
-// ── File scanning ─────────────────────────────────────────────
-
-function scanFolder(folderPath, depth = 0) {
-  const MAX_DEPTH = 8
-  if (depth > MAX_DEPTH) return []
-  try {
-    if (!fs.existsSync(folderPath)) return []
-    const entries = fs.readdirSync(folderPath, { withFileTypes: true })
-    const cards = []
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const fullPath = path.join(folderPath, entry.name)
-      if (entry.isFile() && entry.name.endsWith('.md')) {
-        const stat = fs.statSync(fullPath)
-        cards.push({
-          id: fullPath,
-          path: fullPath,
-          name: entry.name.replace(/\.md$/, ''),
-          folder: folderPath,
-          modifiedAt: stat.mtime.toISOString(),
-        })
-      } else if (entry.isDirectory()) {
-        cards.push(...scanFolder(fullPath, depth + 1))
-      }
-    }
-    return cards
-  } catch {
-    return []
-  }
-}
-
-function scanProfile(profile) {
-  const cards = []
-  for (const folder of profile.folders) {
-    cards.push(...scanFolder(folder))
-  }
-  // Deduplicate by path (edge case: overlapping folder paths)
-  const seen = new Set()
-  return cards.filter(c => {
-    if (seen.has(c.path)) return false
-    seen.add(c.path)
-    return true
-  })
-}
-
-// ── IPC handlers ──────────────────────────────────────────────
+const { scanProfile } = require('../scanner')
 
 function registerProfileHandlers() {
   ipcMain.handle('profiles:get-all', () => {
@@ -85,7 +37,6 @@ function registerProfileHandlers() {
   ipcMain.handle('profiles:delete', (_, profileId) => {
     const data = readData()
     data.profiles = data.profiles.filter(p => p.id !== profileId)
-    // Clean up card/session state for this profile
     delete data.cards[profileId]
     delete data.sessions[profileId]
     writeData(data)

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const { registerProfileHandlers } = require('./ipc/profiles')
+const { registerCardHandlers } = require('./ipc/cards')
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -35,6 +36,7 @@ ipcMain.handle('get-app-version', () => {
 })
 
 registerProfileHandlers()
+registerCardHandlers()
 
 app.whenReady().then(() => {
   createWindow()
