@@ -1,16 +1,21 @@
 import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
+import Profiles from './components/Profiles'
+
+// Views that manage their own scroll/layout should not have dot-grid on the outer <main>
+const FULL_SCREEN_VIEWS = ['profiles']
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard')
+  const isFullScreen = FULL_SCREEN_VIEWS.includes(activeView)
 
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
         return <Dashboard />
       case 'profiles':
-        return <Placeholder title="Profiles" description="Create and manage your knowledge profiles here." />
+        return <Profiles />
       case 'settings':
         return <Placeholder title="Settings" description="Configure FlashMind to your preferences." />
       default:
@@ -21,7 +26,7 @@ function App() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       <Sidebar activeView={activeView} onNavigate={setActiveView} />
-      <main className="flex-1 overflow-auto dot-grid">
+      <main className={`flex-1 overflow-auto ${isFullScreen ? '' : 'dot-grid'}`}>
         {renderView()}
       </main>
     </div>
