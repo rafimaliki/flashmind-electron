@@ -3,6 +3,7 @@ const path = require('path')
 const { registerProfileHandlers } = require('./ipc/profiles')
 const { registerCardHandlers } = require('./ipc/cards')
 const { registerDashboardHandlers } = require('./ipc/dashboard')
+const { registerSessionHandlers } = require('./ipc/sessions')
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -39,6 +40,7 @@ ipcMain.handle('get-app-version', () => {
 registerProfileHandlers()
 registerCardHandlers()
 registerDashboardHandlers()
+registerSessionHandlers()
 
 app.whenReady().then(() => {
   createWindow()

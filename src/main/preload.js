@@ -24,7 +24,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   sessions: {
-    record: (profileId, cardsReviewed) => ipcRenderer.invoke('sessions:record', { profileId, cardsReviewed }),
+    record:       (profileId, cardsReviewed) => ipcRenderer.invoke('sessions:record', { profileId, cardsReviewed }),
+    getActive:    (profileId)                => ipcRenderer.invoke('sessions:get-active', profileId),
+    saveProgress: (payload)                  => ipcRenderer.invoke('sessions:save-progress', payload),
+    clearActive:  (profileId)                => ipcRenderer.invoke('sessions:clear-active', profileId),
+    resume:       (profileId)                => ipcRenderer.invoke('sessions:resume', profileId),
   },
 
   dialog: {

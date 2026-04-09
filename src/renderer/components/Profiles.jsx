@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Plus, Folder, FolderOpen, Trash2, X,
   FileText, FolderPlus, AlertTriangle, Loader2,
-  PlayCircle,
+  PlayCircle, RotateCcw, ChevronRight,
 } from 'lucide-react'
 
 const api = window.electronAPI
@@ -167,7 +167,81 @@ function FolderItem({ folderPath, onRemove }) {
 
 // ── Profile Detail (right panel) ─────────────────────────────
 
-function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFolder, onDelete, onUpdateCardsPerSession, onStartSession }) {
+function SessionBanner({ activeSession, onContinue, onStartFresh }) {
+  const { ratedCount, totalCards } = activeSession
+  const pct = totalCards > 0 ? (ratedCount / totalCards) * 100 : 0
+  const [confirmFresh, setConfirmFresh] = useState(false)
+
+  return (
+    <div className="mb-6 rounded-xl p-4 anim-item"
+         style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
+          Session in progress
+        </p>
+        <span className="text-[11px] font-mono" style={{ color: 'rgba(245,158,11,0.7)' }}>
+          {ratedCount} / {totalCards} cards
+        </span>
+      </div>
+
+      {/* Mini progress bar */}
+      <div className="h-1 rounded-full mb-3" style={{ background: 'rgba(245,158,11,0.15)' }}>
+        <div className="h-full rounded-full transition-all duration-500"
+             style={{ width: `${pct}%`, background: 'var(--accent)' }} />
+      </div>
+
+      {/* Action buttons */}
+      {!confirmFresh ? (
+        <div className="flex gap-2">
+          <button
+            onClick={onContinue}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center"
+            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(245,158,11,0.25)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.18)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-dim)' }}
+          >
+            <ChevronRight size={13} />
+            Continue
+          </button>
+          <button
+            onClick={() => setConfirmFresh(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-overlay)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+          >
+            <RotateCcw size={12} />
+            Start fresh
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={13} style={{ color: '#f87171', flexShrink: 0 }} />
+          <p className="flex-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Discard progress?
+          </p>
+          <button
+            onClick={onStartFresh}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium"
+            style={{ background: '#f87171', color: '#0a0a0d' }}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setConfirmFresh(false)}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium"
+            style={{ background: 'var(--bg-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+          >
+            No
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProfileDetail({ profile, cardCount, scanning, activeSession, onAddFolder, onRemoveFolder, onDelete, onUpdateCardsPerSession, onStartSession, onContinueSession, onStartFresh }) {
   const [localName, setLocalName] = useState(profile.name)
   const [localCPS, setLocalCPS] = useState(profile.cardsPerSession)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -192,7 +266,7 @@ function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFold
           {profile.name}
         </h2>
 
-        {/* Card count + Start Session row */}
+        {/* Card count row */}
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg"
                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
@@ -208,24 +282,36 @@ function ProfileDetail({ profile, cardCount, scanning, onAddFolder, onRemoveFold
             )}
           </div>
 
-          <button
-            onClick={onStartSession}
-            disabled={!cardCount}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all"
-            style={{
-              background: cardCount ? 'var(--accent-dim)' : 'var(--bg-elevated)',
-              color: cardCount ? 'var(--accent)' : 'var(--text-muted)',
-              border: cardCount ? '1px solid rgba(245,158,11,0.25)' : '1px solid var(--border)',
-              cursor: cardCount ? 'pointer' : 'not-allowed',
-            }}
-            onMouseEnter={e => { if (cardCount) e.currentTarget.style.background = 'rgba(245,158,11,0.18)' }}
-            onMouseLeave={e => { if (cardCount) e.currentTarget.style.background = 'var(--accent-dim)' }}
-          >
-            <PlayCircle size={13} />
-            Start Session
-          </button>
+          {/* Only show plain Start Session when no active session */}
+          {!activeSession && (
+            <button
+              onClick={onStartSession}
+              disabled={!cardCount}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{
+                background: cardCount ? 'var(--accent-dim)' : 'var(--bg-elevated)',
+                color: cardCount ? 'var(--accent)' : 'var(--text-muted)',
+                border: cardCount ? '1px solid rgba(245,158,11,0.25)' : '1px solid var(--border)',
+                cursor: cardCount ? 'pointer' : 'not-allowed',
+              }}
+              onMouseEnter={e => { if (cardCount) e.currentTarget.style.background = 'rgba(245,158,11,0.18)' }}
+              onMouseLeave={e => { if (cardCount) e.currentTarget.style.background = 'var(--accent-dim)' }}
+            >
+              <PlayCircle size={13} />
+              Start Session
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ── Active Session Banner ── */}
+      {activeSession && (
+        <SessionBanner
+          activeSession={activeSession}
+          onContinue={onContinueSession}
+          onStartFresh={onStartFresh}
+        />
+      )}
 
       {/* ── Folders ── */}
       <div className="mb-8 anim-item" style={{ animationDelay: '0.10s' }}>
@@ -541,13 +627,14 @@ function CreateModal({ onCreate, onClose }) {
 
 // ── Main export ───────────────────────────────────────────────
 
-export default function Profiles({ onStartSession }) {
+export default function Profiles({ onStartSession, onResumeSession }) {
   const [profiles, setProfiles] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [cardCount, setCardCount] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [activeSession, setActiveSession] = useState(null)
 
   const selectedProfile = profiles.find(p => p.id === selectedId) ?? null
 
@@ -556,8 +643,13 @@ export default function Profiles({ onStartSession }) {
   }, [])
 
   useEffect(() => {
-    if (selectedId) scanCards(selectedId)
-    else setCardCount(null)
+    if (selectedId) {
+      scanCards(selectedId)
+      loadActiveSession(selectedId)
+    } else {
+      setCardCount(null)
+      setActiveSession(null)
+    }
   }, [selectedId])
 
   async function loadProfiles() {
@@ -569,6 +661,11 @@ export default function Profiles({ onStartSession }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function loadActiveSession(profileId) {
+    const session = await api.sessions.getActive(profileId)
+    setActiveSession(session)
   }
 
   async function scanCards(profileId) {
@@ -619,6 +716,18 @@ export default function Profiles({ onStartSession }) {
     setProfiles(prev => prev.map(p => p.id === selectedId ? updated : p))
   }
 
+  async function handleStartFresh() {
+    if (!selectedId || !selectedProfile) return
+    await api.sessions.clearActive(selectedId)
+    setActiveSession(null)
+    onStartSession?.(selectedProfile)
+  }
+
+  function handleContinueSession() {
+    if (!selectedProfile) return
+    onResumeSession?.(selectedProfile)
+  }
+
   return (
     <div className="h-full flex" style={{ background: 'var(--bg-base)' }}>
       <ProfileList
@@ -636,11 +745,14 @@ export default function Profiles({ onStartSession }) {
             profile={selectedProfile}
             cardCount={cardCount}
             scanning={scanning}
+            activeSession={activeSession}
             onAddFolder={handleAddFolder}
             onRemoveFolder={handleRemoveFolder}
             onDelete={handleDelete}
             onUpdateCardsPerSession={handleUpdateCardsPerSession}
             onStartSession={() => onStartSession?.(selectedProfile)}
+            onContinueSession={handleContinueSession}
+            onStartFresh={handleStartFresh}
           />
         ) : (
           <EmptyDetail

@@ -6,8 +6,9 @@ const DATA_FILE = path.join(app.getPath('userData'), 'data.json')
 
 const DEFAULT_DATA = {
   profiles: [],
-  cards: {},     // { [profileId]: { [cardPath]: { weight, totalReviews, lastRating, lastReview } } }
-  sessions: {},  // { [YYYY-MM-DD]: { [profileId]: { cardsReviewed, completedAt } } }
+  cards: {},          // { [profileId]: { [cardPath]: { weight, totalReviews, lastRating, lastReview } } }
+  sessions: {},       // { [YYYY-MM-DD]: { [profileId]: { cardsReviewed, completedAt } } }
+  activeSessions: {}, // { [profileId]: { remainingPaths, ratedCount, totalCards, startedAt, savedAt } }
   streak: {
     current: 0,
     lastStudyDate: null, // YYYY-MM-DD

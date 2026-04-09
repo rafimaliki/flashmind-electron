@@ -4,20 +4,22 @@ import Dashboard from './components/Dashboard'
 import Profiles from './components/Profiles'
 import Session from './components/Session'
 
-// Views that manage their own layout internally (no outer dot-grid or overflow-auto)
 const CUSTOM_LAYOUT_VIEWS = ['profiles', 'session']
 
 function App() {
-  const [activeView, setActiveView] = useState('dashboard')
+  const [activeView, setActiveView]     = useState('dashboard')
   const [sessionProfile, setSessionProfile] = useState(null)
+  const [sessionIsResume, setSessionIsResume] = useState(false)
 
-  function startSession(profile) {
+  function startSession(profile, isResume = false) {
     setSessionProfile(profile)
+    setSessionIsResume(isResume)
     setActiveView('session')
   }
 
   function endSession() {
     setSessionProfile(null)
+    setSessionIsResume(false)
     setActiveView('dashboard')
   }
 
@@ -26,9 +28,14 @@ function App() {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveView} />
       case 'profiles':
-        return <Profiles onStartSession={startSession} />
+        return (
+          <Profiles
+            onStartSession={(p) => startSession(p, false)}
+            onResumeSession={(p) => startSession(p, true)}
+          />
+        )
       case 'session':
-        return <Session profile={sessionProfile} onEnd={endSession} />
+        return <Session profile={sessionProfile} isResume={sessionIsResume} onEnd={endSession} />
       case 'settings':
         return <Placeholder title="Settings" description="Configure FlashMind to your preferences." />
       default:
@@ -40,7 +47,6 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      {/* Hide sidebar during session for a focused review experience */}
       {activeView !== 'session' && (
         <Sidebar activeView={activeView} onNavigate={setActiveView} />
       )}
