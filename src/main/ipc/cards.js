@@ -43,8 +43,9 @@ function applyRating(state, rating) {
 function weightedSample(pool, n) {
   const items = pool.slice()
   const result = []
+  const limit = Math.min(n, items.length) // pre-compute: items.length shrinks as we splice
 
-  for (let i = 0; i < Math.min(n, items.length); i++) {
+  for (let i = 0; i < limit; i++) {
     const total = items.reduce((s, c) => s + c.weight, 0)
     let rand = Math.random() * total
     for (let j = 0; j < items.length; j++) {
